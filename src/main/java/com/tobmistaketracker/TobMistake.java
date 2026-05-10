@@ -29,7 +29,9 @@ public enum TobMistake {
     VERZIK_P3_MELEE_CHANCED("Verzik P3 Melee", "verzik_p3_melee.png", "Was I lucky?"),
     VERZIK_P3_MELEE_TEAMMATE("Verzik P3 Melee", "verzik_p3_melee.png", "I'm being PK'd!"),
     VERZIK_P3_WEB("Verzik P3 Web", "verzik_p3_web.png", "I was stuck in a web!"),
-    VERZIK_P3_PURPLE("Verzik P3 Purple Tornado", "verzik_p3_purple.png", "I'm healing Verzik!");
+    VERZIK_P3_PURPLE("Verzik P3 Purple Tornado", "verzik_p3_purple.png", "I'm healing Verzik!"),
+    SOTETSEG_PRAYER("Sotetseg Prayer", "sot_mage_orb.png", "I got hit by a Sotetseg orb!"),
+    SOTETSEG_DEATH_BALL("Sotetseg Death Ball", "sot_death_ball.png", "I got hit by a death ball!");
 
 
     private static final Set<TobMistake> ROOM_DEATH_ENUMS = EnumSet.of(
