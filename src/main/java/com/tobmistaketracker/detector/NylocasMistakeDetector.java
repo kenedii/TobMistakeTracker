@@ -9,6 +9,9 @@ import net.runelite.api.Actor;
 import net.runelite.api.HeadIcon;
 import net.runelite.api.Hitsplat;
 import net.runelite.api.HitsplatID;
+import net.runelite.api.InventoryID;
+import net.runelite.api.Item;
+import net.runelite.api.ItemContainer;
 import net.runelite.api.NPC;
 import net.runelite.api.Player;
 import net.runelite.api.Prayer;
@@ -21,6 +24,7 @@ import net.runelite.client.eventbus.Subscribe;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -38,6 +42,33 @@ public class NylocasMistakeDetector extends BaseTobMistakeDetector {
     private static final Set<Integer> NYLO_MELEE_IDS = Set.of(8355, 10804, 10808);
     private static final Set<Integer> NYLO_MAGIC_IDS = Set.of(8356, 10805, 10809);
     private static final Set<Integer> NYLO_RANGE_IDS = Set.of(8357, 10806, 10810);
+
+    private static final List<String> MELEE_WEAPONS = Arrays.asList(
+            "Abyssal whip", "Abyssal tentacle", "Dual macuahuitl", "Osmumten's fang",
+            "Scythe of vitur", "Dragon scimitar", "Blade of saeldor", "Noxious halberd",
+            "Zombie axe", "Inquisitor's mace", "Dragon claws", "Bandos godsword",
+            "Crystal halberd", "Burning claws", "Dragon halberd", "Voidwaker",
+            "Dragon warhammer", "Sulphur blades", "Glacial temotli", "Guthan's spear",
+            "Soulreaper axe", "Ghrazi rapier", "Dharok's greataxe", "Rune claws",
+            "Arkan blade", "Rune scimitar", "3rd age longsword", "Abyssal dagger",
+            "Dragon dagger", "Swift blade", "Goblin paint cannon", "Ham joint",
+            "Zamorakian spear", "Torag's hammers");
+
+    private static final List<String> RANGED_WEAPONS = Arrays.asList(
+            "Toxic blowpipe", "Eclipse atlatl", "Rosewood blowpipe", "Magic shortbow(i)",
+            "Magic shortbow", "Dorgeshuun crossbow", "Karil's crossbow", "Zaryte crossbow",
+            "Twisted bow", "Bow of faerdhinen", "Camphor blowpipe", "Dragon hunter crossbow",
+            "Dragon crossbow", "Tonalztics of ralos", "Armadyl crossbow",
+            "Hunters' sunlight crossbow", "Heavy ballista", "Dark bow", "Rune crossbow");
+
+    private static final List<String> MAGIC_WEAPONS = Arrays.asList(
+            "Eye of ayak", "Toxic staff of the dead", "Staff of the dead",
+            "Tumeken's shadow", "Kodai wand", "Nightmare staff", "Sanguinesti staff",
+            "Toxic trident of the swamp", "Trident of the swamp", "Ancient sceptre",
+            "Warped sceptre", "Iban's staff", "Accursed sceptre", "Thammaron's sceptre",
+            "Staff of water", "Water battlestaff", "Ahrim's staff", "Blue moon spear");
+
+    private static final int WEAPON_SLOT = 3;
 
     private final Set<String> playersHitByWrongNyloPrayer;
     private final Set<String> playersHitByWrongNyloHeal;
@@ -177,6 +208,13 @@ public class NylocasMistakeDetector extends BaseTobMistakeDetector {
                 log.debug("Nylocas wrong style heal detected for {} (boss id {})", player.getName(),
                         nylocasBoss.getId());
             }
+
+            // Check if the player's weapon is in the whitelist for the boss's current form
+            if (!isWeaponInWhitelist(player, nylocasBoss.getId())) {
+                playersHitByWrongNyloHeal.add(player.getName());
+                log.debug("Nylocas wrong style weapon detected for {} (boss id {})", player.getName(),
+                        nylocasBoss.getId());
+            }
         }
 
         Prayer expectedPrayer = expectedPrayerForNylocasId(nylocasBoss.getId());
@@ -247,5 +285,49 @@ public class NylocasMistakeDetector extends BaseTobMistakeDetector {
 
     private boolean isSameTick(int attackTick, int currentTick) {
         return attackTick > -1 && attackTick == currentTick;
+    }
+
+    private boolean isWeaponInWhitelist(Player player, int bossId) {
+        ItemContainer equipment = client.getItemContainer(InventoryID.EQUIPMENT);
+        if (equipment == null) {
+            return false;
+        }
+
+        Item weaponItem = equipment.getItem(WEAPON_SLOT);
+        String weaponName;
+        if (weaponItem == null) {
+            weaponName = "no weapon";
+        } else {
+            weaponName = client.getItemDefinition(weaponItem.getId()).getName().toLowerCase();
+        }
+
+        List<String> whitelist = getWhitelistForBossForm(bossId);
+        if (whitelist == null) {
+            return false;
+        }
+
+        for (String allowedWeapon : whitelist) {
+            if (weaponName.contains(allowedWeapon.toLowerCase())) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private List<String> getWhitelistForBossForm(int bossId) {
+        if (NYLO_MELEE_IDS.contains(bossId)) {
+            return MELEE_WEAPONS;
+        }
+
+        if (NYLO_MAGIC_IDS.contains(bossId)) {
+            return MAGIC_WEAPONS;
+        }
+
+        if (NYLO_RANGE_IDS.contains(bossId)) {
+            return RANGED_WEAPONS;
+        }
+
+        return null;
     }
 }
