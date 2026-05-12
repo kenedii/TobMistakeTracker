@@ -64,7 +64,7 @@ public class NylocasMistakeDetector extends BaseTobMistakeDetector {
     private static final List<String> MAGIC_WEAPONS = Arrays.asList(
             "Eye of ayak", "Toxic staff of the dead", "Staff of the dead",
             "Tumeken's shadow", "Kodai wand", "Nightmare staff", "Sanguinesti staff",
-            "Toxic trident of the swamp", "Trident of the swamp", "Ancient sceptre",
+            "Trident of the seas", "Trident of the swamp", "Ancient sceptre",
             "Warped sceptre", "Iban's staff", "Accursed sceptre", "Thammaron's sceptre",
             "Staff of water", "Water battlestaff", "Ahrim's staff", "Blue moon spear");
 
