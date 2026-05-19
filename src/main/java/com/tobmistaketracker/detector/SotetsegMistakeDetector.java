@@ -47,6 +47,9 @@ public class SotetsegMistakeDetector extends BaseTobMistakeDetector {
     private final Map<String, Integer> recentMageOrbTickByPlayer;
     private final Map<String, Integer> recentRangeOrbTickByPlayer;
     private final Map<String, Integer> recentDeathBallTickByPlayer;
+    private final Map<String, Integer> recentDeathBallHitsplatTickByPlayer;
+    private final Map<String, Integer> recentDeathBallHitsplatCountByPlayer;
+    private final Map<String, Integer> recentDeathBallDamageHitsplatCountByPlayer;
     private int recentDeathBallTick;
 
     @Inject
@@ -57,6 +60,9 @@ public class SotetsegMistakeDetector extends BaseTobMistakeDetector {
         this.recentMageOrbTickByPlayer = new HashMap<>();
         this.recentRangeOrbTickByPlayer = new HashMap<>();
         this.recentDeathBallTickByPlayer = new HashMap<>();
+        this.recentDeathBallHitsplatTickByPlayer = new HashMap<>();
+        this.recentDeathBallHitsplatCountByPlayer = new HashMap<>();
+        this.recentDeathBallDamageHitsplatCountByPlayer = new HashMap<>();
         this.recentDeathBallTick = -1;
     }
 
@@ -77,6 +83,9 @@ public class SotetsegMistakeDetector extends BaseTobMistakeDetector {
         recentMageOrbTickByPlayer.clear();
         recentRangeOrbTickByPlayer.clear();
         recentDeathBallTickByPlayer.clear();
+        recentDeathBallHitsplatTickByPlayer.clear();
+        recentDeathBallHitsplatCountByPlayer.clear();
+        recentDeathBallDamageHitsplatCountByPlayer.clear();
         recentDeathBallTick = -1;
     }
 
@@ -92,7 +101,7 @@ public class SotetsegMistakeDetector extends BaseTobMistakeDetector {
             mistakes.add(TobMistake.SOTETSEG_PRAYER);
         }
 
-        if (playersDeadToBall.contains(raiderName)) {
+        if (playersDeadToBall.contains(raiderName) && !hasDoubleDamageHitsplats(raiderName)) {
             mistakes.add(TobMistake.SOTETSEG_DEATH_BALL);
         }
 
@@ -105,6 +114,7 @@ public class SotetsegMistakeDetector extends BaseTobMistakeDetector {
         playersHitByRangeOrbWithoutPrayer.clear();
         playersDeadToBall.clear();
         pruneOldOrbTicks(client.getTickCount());
+        pruneOldDeathBallHitsplats(client.getTickCount());
     }
 
     @Subscribe
@@ -148,7 +158,7 @@ public class SotetsegMistakeDetector extends BaseTobMistakeDetector {
             // Only count death if this player was targeted by the death ball or was on same
             // tile stacking
             Integer deathBallTick = recentDeathBallTickByPlayer.get(playerName);
-            if (isSameTick(deathBallTick, client.getTickCount())) {
+            if (isRecent(deathBallTick, client.getTickCount(), RECENT_DEATH_BALL_TICKS)) {
                 playersDeadToBall.add(playerName);
                 log.debug("Player " + playerName + " died to death ball they were targeted by");
             }
@@ -190,6 +200,11 @@ public class SotetsegMistakeDetector extends BaseTobMistakeDetector {
             String playerName = player.getName();
             Integer recentMageOrbTick = recentMageOrbTickByPlayer.get(playerName);
             Integer recentRangeOrbTick = recentRangeOrbTickByPlayer.get(playerName);
+            Integer recentDeathBallTick = recentDeathBallTickByPlayer.get(playerName);
+
+            if (isRecent(recentDeathBallTick, currentTick, RECENT_DEATH_BALL_TICKS)) {
+                recordDeathBallHitsplat(playerName, hitsplat, currentTick);
+            }
 
             if (isSameTick(recentMageOrbTick, currentTick)
                     && hitsplat.getAmount() > 0
@@ -230,11 +245,40 @@ public class SotetsegMistakeDetector extends BaseTobMistakeDetector {
         orbTicksByPlayer.put(targetName, currentTick);
     }
 
+    private void recordDeathBallHitsplat(String playerName, Hitsplat hitsplat, int currentTick) {
+        if (!isSameTick(recentDeathBallHitsplatTickByPlayer.get(playerName), currentTick)) {
+            recentDeathBallHitsplatTickByPlayer.put(playerName, currentTick);
+            recentDeathBallHitsplatCountByPlayer.put(playerName, 0);
+            recentDeathBallDamageHitsplatCountByPlayer.put(playerName, 0);
+        }
+
+        recentDeathBallHitsplatCountByPlayer.put(playerName,
+                recentDeathBallHitsplatCountByPlayer.get(playerName) + 1);
+
+        if (hitsplat.getAmount() > 0) {
+            recentDeathBallDamageHitsplatCountByPlayer.put(playerName,
+                    recentDeathBallDamageHitsplatCountByPlayer.get(playerName) + 1);
+        }
+    }
+
+    private boolean hasDoubleDamageHitsplats(String playerName) {
+        Integer hitsplatCount = recentDeathBallHitsplatCountByPlayer.get(playerName);
+        Integer damageHitsplatCount = recentDeathBallDamageHitsplatCountByPlayer.get(playerName);
+        return hitsplatCount != null && damageHitsplatCount != null && hitsplatCount > 1 && damageHitsplatCount > 1;
+    }
+
     private void pruneOldOrbTicks(int currentTick) {
         recentMageOrbTickByPlayer.entrySet()
                 .removeIf(entry -> !isRecent(entry.getValue(), currentTick, RECENT_PRAYER_ORB_TICKS));
         recentRangeOrbTickByPlayer.entrySet()
                 .removeIf(entry -> !isRecent(entry.getValue(), currentTick, RECENT_PRAYER_ORB_TICKS));
+    }
+
+    private void pruneOldDeathBallHitsplats(int currentTick) {
+        recentDeathBallHitsplatTickByPlayer.entrySet()
+                .removeIf(entry -> !isRecent(entry.getValue(), currentTick, RECENT_DEATH_BALL_TICKS));
+        recentDeathBallHitsplatCountByPlayer.keySet().removeIf(player -> !recentDeathBallHitsplatTickByPlayer.containsKey(player));
+        recentDeathBallDamageHitsplatCountByPlayer.keySet().removeIf(player -> !recentDeathBallHitsplatTickByPlayer.containsKey(player));
     }
 
     private NPC findSotetseg() {
