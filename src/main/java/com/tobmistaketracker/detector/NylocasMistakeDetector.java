@@ -201,16 +201,16 @@ public class NylocasMistakeDetector extends BaseTobMistakeDetector {
         }
 
         if (player.getInteracting() == nylocasBoss) {
-            nyloHealCandidates.add(player.getName());
-
-            if (isSameTick(recentNyloHealTick, currentTick)) {
-                playersHitByWrongNyloHeal.add(player.getName());
-                log.debug("Nylocas wrong style heal detected for {} (boss id {})", player.getName(),
-                        nylocasBoss.getId());
-            }
-
             // Check if the player's weapon is in the whitelist for the boss's current form
             if (!isWeaponInWhitelist(player, nylocasBoss.getId())) {
+                nyloHealCandidates.add(player.getName());
+
+                if (isSameTick(recentNyloHealTick, currentTick)) {
+                    playersHitByWrongNyloHeal.add(player.getName());
+                    log.debug("Nylocas wrong style heal detected for {} (boss id {})", player.getName(),
+                            nylocasBoss.getId());
+                }
+
                 playersHitByWrongNyloHeal.add(player.getName());
                 log.debug("Nylocas wrong style weapon detected for {} (boss id {})", player.getName(),
                         nylocasBoss.getId());
